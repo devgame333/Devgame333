@@ -1,0 +1,148 @@
+--// SERVICES
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+--// CONFIG
+local speed = 50
+local jumpPower = 100
+local flySpeed = 60
+
+local flying = false
+local bodyVelocity
+local bodyGyro
+
+--// FUNÇÃO FLY COMPLETO
+local function startFly()
+    local character = player.Character or player.CharacterAdded:Wait()
+    local hrp = character:WaitForChild("HumanoidRootPart")
+
+    bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.MaxForce = Vector3.new(999999,999999,999999)
+    bodyVelocity.Velocity = Vector3.new(0,0,0)
+    bodyVelocity.Parent = hrp
+
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.MaxTorque = Vector3.new(999999,999999,999999)
+    bodyGyro.CFrame = hrp.CFrame
+    bodyGyro.Parent = hrp
+
+    flying = true
+end
+
+local function stopFly()
+    flying = false
+    if bodyVelocity then bodyVelocity:Destroy() end
+    if bodyGyro then bodyGyro:Destroy() end
+end
+
+--// CONTROLE DO FLY
+RunService.RenderStepped:Connect(function()
+    if flying and bodyVelocity then
+        local moveDirection = Vector3.new(0,0,0)
+        local cam = workspace.CurrentCamera
+
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveDirection = moveDirection + cam.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveDirection = moveDirection - cam.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveDirection = moveDirection - cam.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveDirection = moveDirection + cam.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            moveDirection = moveDirection + Vector3.new(0,1,0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+            moveDirection = moveDirection - Vector3.new(0,1,0)
+        end
+
+        bodyVelocity.Velocity = moveDirection * flySpeed
+    end
+end)
+
+--// SPEED + JUMP
+local function applyStats()
+    local char = player.Character or player.CharacterAdded:Wait()
+    local humanoid = char:WaitForChild("Humanoid")
+
+    humanoid.WalkSpeed = speed
+    humanoid.JumpPower = jumpPower
+end
+
+player.CharacterAdded:Connect(function()
+    wait(1)
+    applyStats()
+end)
+
+applyStats()
+
+--// TECLAS
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+
+    if input.KeyCode == Enum.KeyCode.F then
+        if flying then
+            stopFly()
+        else
+            startFly()
+        end
+    end
+end)
+
+--// SISTEMA VIDA (VIVO / MORTO)
+local function monitorHealth(plr)
+    plr.CharacterAdded:Connect(function(char)
+        local humanoid = char:WaitForChild("Humanoid")
+
+        humanoid.Died:Connect(function()
+            print(plr.Name .. " morreu ❌")
+        end)
+
+        humanoid.HealthChanged:Connect(function(health)
+            if health > 0 then
+                print(plr.Name .. " está vivo ❤️")
+            end
+        end)
+    end)
+end
+
+for _, plr in pairs(Players:GetPlayers()) do
+    monitorHealth(plr)
+end
+
+Players.PlayerAdded:Connect(monitorHealth)
+
+--// ESP COMPLETO
+local ESPs = {}
+
+local function createESP(plr)
+    if plr == player then return end
+
+    plr.CharacterAdded:Connect(function(char)
+        local highlight = Instance.new("Highlight")
+        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.Parent = char
+
+        ESPs[plr] = highlight
+    end)
+end
+
+for _, plr in pairs(Players:GetPlayers()) do
+    createESP(plr)
+end
+
+Players.PlayerAdded:Connect(createESP)
+
+--// STATUS
+print("SCRIPT ATIVO 🔥")
+print("F = Ativar/Desativar Fly")
+print("WASD = Movimentação no ar")
+print("Space = Subir | Ctrl = Descer")
